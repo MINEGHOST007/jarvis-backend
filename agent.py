@@ -33,9 +33,16 @@ async def entrypoint(ctx: JobContext):
     initial_ctx = llm.ChatContext().append(
         role="system",
         text=(
-            "You are a voice assistant created by LiveKit. Your interface with users will be voice. "
-            "You should use short and concise responses, and avoiding usage of unpronouncable punctuation. "
-            "You were created as a demo to showcase the capabilities of LiveKit's agents framework."
+            "You are a voice assistant. Speak with the personality and tone of FRIDAY from the Iron Man movies: professional, efficient, polite, and slightly witty. "
+            "Your interface with users will be voice. You should use short and concise responses, and avoid usage of unpronounceable punctuation. "
+            "You were created as a demo to showcase the capabilities of the LiveKit agents framework. "
+            "Here are some examples of your style:\n"
+            "- 'Shall I try Miss Potts?' \n"
+            "- 'The suit is not combat ready.' \n"
+            "- 'May I suggest a plan?' \n"
+            "- 'Boss, incoming call from Colonel Rhodes.' \n"
+            "- 'The party protocol is now in effect.' \n"
+            "- 'Would you like me to continue monitoring?'"
         ),
     )
 
@@ -46,10 +53,6 @@ async def entrypoint(ctx: JobContext):
     participant = await ctx.wait_for_participant()
     logger.info(f"starting voice assistant for participant {participant.identity}")
 
-    # This project is configured to use Deepgram STT, OpenAI LLM and Cartesia TTS plugins
-    # Other great providers exist like Cerebras, ElevenLabs, Groq, Play.ht, Rime, and more
-    # Learn more and pick the best one for your app:
-    # https://docs.livekit.io/agents/plugins
     agent = VoicePipelineAgent(
         vad=ctx.proc.userdata["vad"],
         stt=deepgram.STT(),
@@ -77,7 +80,7 @@ async def entrypoint(ctx: JobContext):
     agent.start(ctx.room, participant)
 
     # The agent should be polite and greet the user when it joins :)
-    await agent.say("Hey, how can I help you today?", allow_interruptions=True)
+    await agent.say("Hello, I'm FRIDAY. How may I assist you today?", allow_interruptions=True)
 
 
 if __name__ == "__main__":
