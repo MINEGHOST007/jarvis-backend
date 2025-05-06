@@ -24,24 +24,22 @@ class EgressSession:
         self.lkapi = api.LiveKitAPI(api_key=api_key, api_secret=api_secret, url=livekit_url)
         self.active_egresses = {}
 
-    async def start_room_composite(self, room_name: str) -> dict:
+    async def start_room_composite(self, room_name: str, user_id:str) -> dict:
         """
         Start a composite egress for the given room and return metadata.
         """
         timestamp = int(time.time())
         filename = f"recording_{room_name}_{timestamp}.m3u8"
-        output_path = os.path.join(os.getenv("EGRESS_OUTPUT_DIR", "/app/recordings"), filename)
 
         request = api.RoomCompositeEgressRequest(
             room_name=room_name,
             audio_only=False,
             file_outputs=[api.EncodedFileOutput(
                 file_type=api.EncodedFileType.MP4,
-                filepath=os.getenv("EGRESS_OUTPUT_DIR", "/app/recordings") + "/" + filename,
+                filepath=f"sessions/{user_id}" + "/" + filename,
                 s3=api.S3Upload(
-                    bucket="jarvislivekit",
-                    region="us-east-1",
-                    endpoint="https://s3.us-east-1.amazonaws.com",
+                    bucket=os.getenv("AWS_BUCKET_NAME"),
+                    region=os.getenv("AWS_REGION"),
                     access_key=os.getenv("AWS_ACCESS_KEY_ID"),
                     secret=os.getenv("AWS_SECRET_ACCESS_KEY"),
                     force_path_style=True,
@@ -57,7 +55,7 @@ class EgressSession:
         metadata = {
             "egress_id": egress_id,
             "room_name": room_name,
-            "output_path": output_path,
+            "user_id": user_id,
             "started_at": timestamp
         }
         print(f"Composite egress started: {egress_id}")

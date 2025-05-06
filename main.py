@@ -6,6 +6,7 @@ import os
 import subprocess
 import logging
 from egress_service import EgressSession
+from aws_service import get_all_files, get_file_url
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -32,7 +33,6 @@ run_agent()
 
 egress_manager: Optional[EgressSession] = None
 
-# FastAPI startup/shutdown events
 def startup_event():
     global egress_manager
     egress_manager = EgressSession()
@@ -46,26 +46,21 @@ async def shutdown_event():
 app.add_event_handler("startup", startup_event)
 app.add_event_handler("shutdown", shutdown_event)
 
-# Root endpoint
 @app.get("/")
 async def read_root():
     return {"message": "Welcome to the Jarvis Backend API"}
 
-# Start egress for a room
 @app.post("/egress/start")
-async def start_egress(session_id: str = Query(...), room_name: str = Query(...)):
+async def start_egress(user_id: str = Query(...), room_name: str = Query(...)):
     if not egress_manager:
         raise HTTPException(status_code=500, detail="Egress manager not initialized")
     try:
-        info = await egress_manager.start_room_composite(room_name)
-        # Tag with your session ID
-        info["session_id"] = session_id
-        return {"message": f"Egress started for session {session_id}", "info": info}
+        info = await egress_manager.start_room_composite(room_name, user_id)
+        return {"message": f"Egress started for session {user_id}", "info": info}
     except Exception as e:
         logger.error(f"Failed to start egress: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Stop egress by egress_id
 @app.post("/egress/stop")
 async def stop_egress(egress_id: str = Query(...)):
     if not egress_manager:
@@ -75,4 +70,22 @@ async def stop_egress(egress_id: str = Query(...)):
         return {"message": f"Egress {egress_id} stopped", "info": result}
     except Exception as e:
         logger.error(f"Failed to stop egress: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/list")
+def get_list_recordings(user_id: str = Query(...)):
+    try:
+        recordings = get_all_files(user_id)
+        return {"recordings": recordings}
+    except Exception as e:
+        logger.error(f"Failed to list recordings: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/get_file_url")
+async def download_file(file_key: str = Query(...), expiration: Optional[int] = Query(None)):
+    try:
+        url = get_file_url(file_key, expiration)
+        return {"url": url}
+    except Exception as e:
+        logger.error(f"Failed to generate download URL: {e}")
         raise HTTPException(status_code=500, detail=str(e))
