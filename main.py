@@ -4,7 +4,6 @@ from fastapi.responses import FileResponse
 from typing import Optional
 import os
 import subprocess
-import asyncio
 import logging
 from egress_service import EgressSession
 
@@ -12,7 +11,6 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 app = FastAPI()
 
-# Allow CORS for all origins (adjust in production)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -21,13 +19,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Directory for storing recordings
 BASE_DIR = os.path.dirname(__file__)
-RECORDINGS_DIR = os.path.join(BASE_DIR, "recordings")
-# Ensure recordings directory exists
-os.makedirs(RECORDINGS_DIR, exist_ok=True)
 
-# Launch the agent subprocess (non-blocking)
 def run_agent():
     try:
         subprocess.Popen(["python3", "agent.py", "dev"], cwd=BASE_DIR)
@@ -37,7 +30,6 @@ def run_agent():
 
 run_agent()
 
-# Global EgressSession instance
 egress_manager: Optional[EgressSession] = None
 
 # FastAPI startup/shutdown events
@@ -84,17 +76,3 @@ async def stop_egress(egress_id: str = Query(...)):
     except Exception as e:
         logger.error(f"Failed to stop egress: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-# List recording files
-@app.get("/recordings")
-async def get_recordings():
-    files = [f for f in os.listdir(RECORDINGS_DIR) if os.path.isfile(os.path.join(RECORDINGS_DIR, f))]
-    return {"recordings": files}
-
-# Download a specific recording
-@app.get("/recordings/{recording_id}")
-async def get_recording(recording_id: str):
-    file_path = os.path.join(RECORDINGS_DIR, recording_id)
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Recording not found")
-    return FileResponse(path=file_path, media_type="video/mp4", filename=recording_id)

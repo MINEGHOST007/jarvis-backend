@@ -4,10 +4,8 @@ import logging
 from dotenv import load_dotenv
 from livekit import api
 
-# Load environment variables
 load_dotenv(dotenv_path=".env.local")
 
-# Configure logger
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
@@ -18,14 +16,11 @@ class EgressSession:
     Instantiates a single LiveKitAPI client and keeps it open until close().
     """
     def __init__(self):
-        # Load LiveKit credentials from environment
         api_key = os.getenv("LIVEKIT_API_KEY")
         api_secret = os.getenv("LIVEKIT_API_SECRET")
         livekit_url = os.getenv("LIVEKIT_URL")
         if not all([api_key, api_secret, livekit_url]):
             raise ValueError("Missing LiveKit environment variables: API_KEY, API_SECRET, or URL")
-
-        # Initialize the LiveKit API client once
         self.lkapi = api.LiveKitAPI(api_key=api_key, api_secret=api_secret, url=livekit_url)
         self.active_egresses = {}
 
@@ -34,17 +29,24 @@ class EgressSession:
         Start a composite egress for the given room and return metadata.
         """
         timestamp = int(time.time())
-        filename = f"recording_{room_name}_{timestamp}.mp4"
+        filename = f"recording_{room_name}_{timestamp}.m3u8"
         output_path = os.path.join(os.getenv("EGRESS_OUTPUT_DIR", "/app/recordings"), filename)
 
         request = api.RoomCompositeEgressRequest(
             room_name=room_name,
-            file_outputs=[
-                api.EncodedFileOutput(
-                    filepath=output_path,
-                    file_type=api.EncodedFileType.MP4
-                )
-            ],
+            audio_only=False,
+            file_outputs=[api.EncodedFileOutput(
+                file_type=api.EncodedFileType.MP4,
+                filepath=os.getenv("EGRESS_OUTPUT_DIR", "/app/recordings") + "/" + filename,
+                s3=api.S3Upload(
+                    bucket="jarvislivekit",
+                    region="us-east-1",
+                    endpoint="https://s3.us-east-1.amazonaws.com",
+                    access_key=os.getenv("AWS_ACCESS_KEY_ID"),
+                    secret=os.getenv("AWS_SECRET_ACCESS_KEY"),
+                    force_path_style=True,
+                ),
+            )],
             preset=api.EncodingOptionsPreset.H264_720P_30,
         )
         logger.debug("Starting composite egress: %s", request)
@@ -58,27 +60,9 @@ class EgressSession:
             "output_path": output_path,
             "started_at": timestamp
         }
+        print(f"Composite egress started: {egress_id}")
         self.active_egresses[egress_id] = metadata
         return metadata
-
-    async def list_egresses(self) -> list:
-        """
-        List all active and past egresses.
-        """
-        logger.debug("Listing all egresses...")
-        response = await self.lkapi.egress.list_egress()
-        egresses = []
-        for e in response.items:
-            entry = {
-                "egress_id": e.egress_id,
-                "room_name": getattr(e, 'room_name', None),
-                "status": e.status,
-                "started_at": e.started_at,
-                "ended_at": e.ended_at,
-                "output": [o.to_dict() for o in getattr(e, 'output', [])]
-            }
-            egresses.append(entry)
-        return egresses
 
     async def stop_egress(self, egress_id: str) -> dict:
         """
