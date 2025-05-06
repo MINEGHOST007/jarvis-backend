@@ -29,12 +29,13 @@ class EgressSession:
         Start a composite egress for the given room and return metadata.
         """
         timestamp = int(time.time())
-        filename = f"recording_{room_name}_{timestamp}.m3u8"
+        filename = f"recording_{room_name}_{timestamp}"
 
         request = api.RoomCompositeEgressRequest(
             room_name=room_name,
             audio_only=False,
-            file_outputs=[api.EncodedFileOutput(
+            file_outputs=[
+                api.EncodedFileOutput(
                 file_type=api.EncodedFileType.MP4,
                 filepath=f"sessions/{user_id}" + "/" + filename,
                 s3=api.S3Upload(
@@ -44,14 +45,14 @@ class EgressSession:
                     secret=os.getenv("AWS_SECRET_ACCESS_KEY"),
                     force_path_style=True,
                 ),
-            )],
+            )
+            ],
             preset=api.EncodingOptionsPreset.H264_720P_30,
         )
         logger.debug("Starting composite egress: %s", request)
         response = await self.lkapi.egress.start_room_composite_egress(request)
         egress_id = response.egress_id
         logger.info("Composite egress started: %s", egress_id)
-
         metadata = {
             "egress_id": egress_id,
             "room_name": room_name,
@@ -77,7 +78,6 @@ class EgressSession:
             "status": response.status,
             "stopped_at": int(time.time())
         }
-        # Clean up local state
         self.active_egresses.pop(egress_id, None)
         return result
 

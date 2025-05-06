@@ -10,7 +10,20 @@ from aws_service import get_all_files, get_file_url
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-app = FastAPI()
+app = FastAPI(
+    title="Jarvis Backend API",
+    description="""
+    ## Overview
+    This API provides endpoints to manage LiveKit voice agent sessions, egress (recording) operations, and file access for recorded sessions. It is designed to be used with a compatible frontend or client application.
+
+    ### Main Features
+    - Start and stop egress (recording) for a LiveKit room
+    - List all recordings for a user
+    - Generate secure download URLs for recorded files
+    - Health check endpoint
+    """,
+    version="1.0.0",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,12 +59,23 @@ async def shutdown_event():
 app.add_event_handler("startup", startup_event)
 app.add_event_handler("shutdown", shutdown_event)
 
-@app.get("/")
+@app.get("/", summary="API Health Check", tags=["Utility"])
 async def read_root():
+    """
+    Health check endpoint to verify the API is running.
+    """
     return {"message": "Welcome to the Jarvis Backend API"}
 
-@app.post("/egress/start")
-async def start_egress(user_id: str = Query(...), room_name: str = Query(...)):
+@app.post("/egress/start", summary="Start Room Recording (Egress)", tags=["Egress"])
+async def start_egress(user_id: str = Query(..., description="Unique user/session identifier for the recording."), room_name: str = Query(..., description="Name of the LiveKit room to record.")):
+    """
+    Start a composite egress (recording) for a given LiveKit room.
+
+    - **user_id**: Unique identifier for the user/session.
+    - **room_name**: Name of the LiveKit room to record.
+    
+    Returns metadata about the started egress session.
+    """
     if not egress_manager:
         raise HTTPException(status_code=500, detail="Egress manager not initialized")
     try:
@@ -61,8 +85,15 @@ async def start_egress(user_id: str = Query(...), room_name: str = Query(...)):
         logger.error(f"Failed to start egress: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/egress/stop")
-async def stop_egress(egress_id: str = Query(...)):
+@app.post("/egress/stop", summary="Stop Room Recording (Egress)", tags=["Egress"])
+async def stop_egress(egress_id: str = Query(..., description="ID of the egress session to stop.")):
+    """
+    Stop an active egress (recording) session by its egress ID.
+
+    - **egress_id**: The unique identifier of the egress session to stop.
+    
+    Returns information about the stopped egress.
+    """
     if not egress_manager:
         raise HTTPException(status_code=500, detail="Egress manager not initialized")
     try:
@@ -72,8 +103,15 @@ async def stop_egress(egress_id: str = Query(...)):
         logger.error(f"Failed to stop egress: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/list")
-def get_list_recordings(user_id: str = Query(...)):
+@app.get("/list", summary="List Recordings for User", tags=["Files"])
+def get_list_recordings(user_id: str = Query(..., description="User/session identifier to list recordings for.")):
+    """
+    List all available recordings for a given user/session.
+
+    - **user_id**: The user/session identifier whose recordings should be listed.
+    
+    Returns a list of recording file metadata.
+    """
     try:
         recordings = get_all_files(user_id)
         return {"recordings": recordings}
@@ -81,8 +119,16 @@ def get_list_recordings(user_id: str = Query(...)):
         logger.error(f"Failed to list recordings: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/get_file_url")
-async def download_file(file_key: str = Query(...), expiration: Optional[int] = Query(None)):
+@app.get("/get_file_url", summary="Get Download URL for Recording", tags=["Files"])
+async def download_file(file_key: str = Query(..., description="Key or path of the file to download."), expiration: Optional[int] = Query(None, description="Expiration time (seconds) for the download URL. Default is provider-specific.")):
+    """
+    Generate a secure, time-limited download URL for a given recording file.
+
+    - **file_key**: The key or path of the file to generate a download URL for.
+    - **expiration**: Optional expiration time (in seconds) for the URL.
+    
+    Returns a signed URL for downloading the file.
+    """
     try:
         url = get_file_url(file_key, expiration)
         return {"url": url}
