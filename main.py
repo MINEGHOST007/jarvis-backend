@@ -67,7 +67,7 @@ async def read_root():
     return {"message": "Welcome to the Jarvis Backend API"}
 
 @app.post("/egress/start", summary="Start Room Recording (Egress)", tags=["Egress"])
-async def start_egress(user_id: str = Query(..., description="Unique user/session identifier for the recording."), room_name: str = Query(..., description="Name of the LiveKit room to record.")):
+async def start_egress(user_id: str = Query(..., description="Unique user/session identifier for the recording."), room_name: str = Query(..., description="Name of the LiveKit room to record."), audio_only: Optional[bool] = Query(False, description="Whether to record audio only (default is False).")):
     """
     Start a composite egress (recording) for a given LiveKit room.
 
@@ -79,7 +79,7 @@ async def start_egress(user_id: str = Query(..., description="Unique user/sessio
     if not egress_manager:
         raise HTTPException(status_code=500, detail="Egress manager not initialized")
     try:
-        info = await egress_manager.start_room_composite(room_name, user_id)
+        info = await egress_manager.start_room_composite(room_name, user_id, audio_only)
         return {"message": f"Egress started for session {user_id}", "info": info}
     except Exception as e:
         logger.error(f"Failed to start egress: {e}")
