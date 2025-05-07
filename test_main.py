@@ -16,14 +16,14 @@ async def test_list_recordings_missing_param():
     """Test /list endpoint with missing user_id param."""
     async with AsyncClient(app=app, base_url="http://test") as ac:
         response = await ac.get("/list")
-    assert response.status_code == 422  # Missing required user_id
+    assert response.status_code == 422
 
 @pytest.mark.asyncio
 async def test_get_file_url_missing_param():
     """Test /get_file_url endpoint with missing file_key param."""
     async with AsyncClient(app=app, base_url="http://test") as ac:
         response = await ac.get("/get_file_url")
-    assert response.status_code == 422  # Missing required file_key
+    assert response.status_code == 422
 
 @pytest.mark.asyncio
 @patch("main.egress_manager", new_callable=AsyncMock)

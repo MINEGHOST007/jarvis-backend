@@ -47,7 +47,6 @@ class EgressSession:
                     ),
                 )
                 ],
-                preset=api.EncodingOptionsPreset.H264_720P_30,
             )
         else:
             request = api.RoomCompositeEgressRequest(
@@ -66,7 +65,7 @@ class EgressSession:
                     ),
                 )
                 ],
-                preset=api.EncodingOptionsPreset.H264_720P_30,
+                preset=api.EncodingOptionsPreset.PORTRAIT_H264_1080P_30,
             )
         logger.debug("Starting composite egress: %s", request)
         response = await self.lkapi.egress.start_room_composite_egress(request)
