@@ -98,6 +98,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 - Query parameters:
   - `user_id` (str, required): Unique user/session identifier
   - `room_name` (str, required): Name of the LiveKit room to record
+  - `audio_only` (bool, Optional): To record only audio or both ?
 - Returns: `{ "message": ..., "info": ... }`
 - Errors: 500 if egress manager is not initialized or backend error
 
