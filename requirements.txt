@@ -12,3 +12,4 @@ uvicorn
 pydantic
 aiofiles
 boto3
+pytest
